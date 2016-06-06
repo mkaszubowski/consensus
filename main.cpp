@@ -41,6 +41,23 @@ void receive_leaders_votes(int rank, int size) {
       rank, leaders_votes[sender]);
   }
 
+  int count_votes[size] = { 0 }, leaders[3], max[2] = { 0 };
+
+  for (i = 0; i < size; i++) { count_votes[leaders_votes[i]]++; }
+
+  for (i = 0; i < 3; i++) {
+    for (int j = 0; j < size; j++) {
+      if (count_votes[j] > max[1]) {
+        max[0] = j;
+        max[1] = count_votes[j];
+      }
+    }
+    leaders[i] = max[0];
+    count_votes[max[0]] = 0;
+    max[0] = 0;
+    max[1] = 0;
+  }
+
   delete[] leaders_votes;
   leaders_votes = NULL;
 }
