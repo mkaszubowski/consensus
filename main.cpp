@@ -11,21 +11,33 @@
 #define LEADER_TAG 200
 #define LOCATION_TAG 300
 
+int updated_timer(int current, int received) {
+  if (received >= current) return received + 1;
+  else return current + 1;
+}
+
 void send_participation_info(int rank, int size, int &timer) {
   int participates = rand() % 2 == 0;
+  int message[2] = {participates, timer};
 
   for (int i = 0; i < size; i++) {
-    MPI_Send(&participates, 1, MPI_INT, i, PARTICIPATION_TAG, MPI_COMM_WORLD);
+    MPI_Send(message, 2, MPI_INT, i, PARTICIPATION_TAG, MPI_COMM_WORLD);
+
     timer++;
   }
 }
 
 void send_leader_vote(int rank, int size, int &timer) {
   int leader_vote = rand() % size;
+  int message[2] = {leader_vote, timer};
 
   for (int recipient = 0; recipient < size; recipient++) {
-    MPI_Send(&leader_vote, 1, MPI_INT, recipient, LEADER_TAG, MPI_COMM_WORLD);
+    MPI_Send(message, 2, MPI_INT, recipient, LEADER_TAG, MPI_COMM_WORLD);
+
     timer++;
+
+    printf("Time = %d, Id = %d, sent leader vote: %d\n",
+      timer, rank, leader_vote);
   }
 }
 
@@ -33,16 +45,19 @@ int *receive_leaders_votes(int rank, int size, int &timer) {
   MPI_Status status;
 
   int *leaders_votes = new int[size];
+  int message[2];
 
   for (int sender = 0; sender < size; sender++) {
     MPI_Recv(
-      &(leaders_votes[sender]), 1, MPI_INT,
+      message, 2, MPI_INT,
       sender, LEADER_TAG, MPI_COMM_WORLD, &status
     );
-    timer++;
 
-    // printf("Process: %d, received leader vote: %d\n",
-    //   rank, leaders_votes[sender]);
+    leaders_votes[sender] = message[0];
+    timer = updated_timer(timer, message[1]);
+
+    printf("Time = %d, Id = %d, received leader vote: %d\n",
+      timer, rank, leaders_votes[sender]);
   }
 
   return leaders_votes;
@@ -74,10 +89,8 @@ void choose_leaders(int rank, int size, int &timer) {
     max[1] = 0;
   }
 
-  for (int i = 0; i < 3; i++) {
-    printf("Choose leader - Process - %d, Leader (%d): %d\n",
-      rank, i, leaders[i]);
-  }
+  printf("Time = %d, Id = %d, chosen leaders: [%d, %d, %d]\n",
+    timer, rank, leaders[0], leaders[1], leaders[2]);
 
   delete[] count_votes;
   delete[] leaders_votes;
@@ -85,25 +98,35 @@ void choose_leaders(int rank, int size, int &timer) {
 
 void send_location_vote(int size, int rank, int &timer) {
   int location_vote = rand() % 4;
+  int message[2] = {location_vote, timer};
 
   for (int recipient = 0; recipient < size; recipient++) {
-    MPI_Send(&location_vote, 1, MPI_INT, recipient,
+    MPI_Send(message, 2, MPI_INT, recipient,
       LOCATION_TAG, MPI_COMM_WORLD);
+
+    timer++;
+
+    printf("Time = %d, Id = %d, sent location vote: %d\n",
+      timer, rank, location_vote);
   }
 }
 
 int *receive_location_votes(int size, int rank, int &timer) {
   MPI_Status status;
   int *location_votes = new int[size];
+  int message[2];
 
   for (int sender = 0; sender < size; sender++) {
     MPI_Recv(
-      &(location_votes[sender]), 1, MPI_INT,
+      message, 2, MPI_INT,
       sender, LOCATION_TAG, MPI_COMM_WORLD, &status
     );
+    location_votes[sender] = message[0];
 
-    printf("Process: %d, received location vote: %d\n",
-      rank, location_votes[sender]);
+    timer = updated_timer(timer, message[1]);
+
+    printf("Time = %d, Id = %d, received location vote: %d\n",
+      timer, rank, message[0]);
   }
 
   return location_votes;
@@ -125,7 +148,7 @@ void choose_location(int size, int rank, int &timer) {
     }
   }
 
-  printf("Chosen location (%d) - %d\n", rank, location);
+  printf("Time = %d, Id = %d, chosen location: %d\n", timer, rank, location);
 
   delete[] location_votes;
 }
@@ -134,22 +157,23 @@ void choose_location(int size, int rank, int &timer) {
 int main(int argc, char **argv)
 {
   int size,rank;
-
   int timer = 0;
+
 
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   srand(rank * time(NULL));
 
+
   send_participation_info(rank, size, timer);
 
   send_leader_vote(rank, size, timer);
   choose_leaders(rank, size, timer);
 
-
   send_location_vote(size, rank, timer);
   choose_location(size, rank, timer);
+
 
 
   MPI_Finalize();
