@@ -83,17 +83,51 @@ void choose_leaders(int rank, int size, int &timer) {
   delete[] leaders_votes;
 }
 
-void choose_place() {
-  int place = 0, max = 0, count[4] = {0}, i;
+void send_location_vote(int size, int rank, int &timer) {
+  int location_vote = rand() % 4;
 
-  for (i = 0; i < 10; i++) { count[places[i]]++; }
+  for (int recipient = 0; recipient < size; recipient++) {
+    MPI_Send(&location_vote, 1, MPI_INT, recipient,
+      LOCATION_TAG, MPI_COMM_WORLD);
+  }
+}
+
+int *receive_location_votes(int size, int rank, int &timer) {
+  MPI_Status status;
+  int *location_votes = new int[size];
+
+  for (int sender = 0; sender < size; sender++) {
+    MPI_Recv(
+      &(location_votes[sender]), 1, MPI_INT,
+      sender, LOCATION_TAG, MPI_COMM_WORLD, &status
+    );
+
+    printf("Process: %d, received location vote: %d\n",
+      rank, location_votes[sender]);
+  }
+
+  return location_votes;
+}
+
+void choose_location(int size, int rank, int &timer) {
+  int *location_votes = receive_location_votes(size, rank, timer);
+
+  int location = 0, max = 0, count[4] = {0}, i;
+
+  for (i = 0; i < size; i++) {
+    count[location_votes[i]]++;
+  }
 
   for (i = 0; i < 4; i++) {
     if (count[i] > max) {
-      place = i;
+      location = i;
       max = count[i];
     }
   }
+
+  printf("Chosen location (%d) - %d\n", rank, location);
+
+  delete[] location_votes;
 }
 
 
@@ -114,25 +148,8 @@ int main(int argc, char **argv)
   choose_leaders(rank, size, timer);
 
 
-  int location_vote = rand() % 4;
-
-  for (int recipient = 0; recipient < size; recipient++) {
-    MPI_Send(&location_vote, 1, MPI_INT, recipient,
-      LOCATION_TAG, MPI_COMM_WORLD);
-  }
-
-  int *location_votes = new int[size];
-  MPI_Status status;
-  for (int sender = 0; sender < size; sender++) {
-    MPI_Recv(
-      &(location_votes[sender]), 1, MPI_INT,
-      sender, LOCATION_TAG, MPI_COMM_WORLD, &status
-    );
-
-    printf("Process: %d, received location vote: %d\n",
-      rank, location_votes[sender]);
-  }
-
+  send_location_vote(size, rank, timer);
+  choose_location(size, rank, timer);
 
 
   MPI_Finalize();
