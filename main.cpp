@@ -26,7 +26,7 @@ void send_leader_vote(int rank, int size) {
   }
 }
 
-void receive_leaders_votes(int rank, int size) {
+int *receive_leaders_votes(int rank, int size) {
   MPI_Status status;
 
   int *leaders_votes = new int[size];
@@ -41,9 +41,21 @@ void receive_leaders_votes(int rank, int size) {
       rank, leaders_votes[sender]);
   }
 
-  int count_votes[size] = { 0 }, leaders[3], max[2] = { 0 }, i;
+  return leaders_votes;
+}
 
-  for (i = 0; i < size; i++) { count_votes[leaders_votes[i]]++; }
+
+void choose_leaders(int rank, int size) {
+  int *leaders_votes = receive_leaders_votes(rank, size);
+
+  int leaders[3],
+      max[2] = { 0 },
+      i;
+  int *count_votes = new int[size]();
+
+  for (i = 0; i < size; i++) {
+    count_votes[leaders_votes[i]]++;
+  }
 
   for (i = 0; i < 3; i++) {
     for (int j = 0; j < size; j++) {
@@ -58,9 +70,15 @@ void receive_leaders_votes(int rank, int size) {
     max[1] = 0;
   }
 
+  for (int i = 0; i < 3; i++) {
+    printf("Choose leader - Process - %d, Leader (%d): %d\n",
+      rank, i, leaders[i]);
+  }
+
+  delete[] count_votes;
   delete[] leaders_votes;
-  leaders_votes = NULL;
 }
+
 
 int main(int argc, char **argv)
 {
@@ -74,7 +92,7 @@ int main(int argc, char **argv)
   send_participation_info(rank, size);
 
   send_leader_vote(rank, size);
-  receive_leaders_votes(rank, size);
+  choose_leaders(rank, size);
 
   MPI_Finalize();
 }
