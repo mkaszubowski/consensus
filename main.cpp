@@ -83,6 +83,19 @@ void choose_leaders(int rank, int size, int &timer) {
   delete[] leaders_votes;
 }
 
+void choose_place() {
+  int place = 0, max = 0, count[4] = {0}, i;
+
+  for (i = 0; i < 10; i++) { count[places[i]]++; }
+
+  for (i = 0; i < 4; i++) {
+    if (count[i] > max) {
+      place = i;
+      max = count[i];
+    }
+  }
+}
+
 
 int main(int argc, char **argv)
 {
