@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <ctime>
 #include <random>
+#include <unistd.h>
 
 #define ROOT 0
 
@@ -163,21 +164,31 @@ int main(int argc, char **argv)
   int size,rank;
   int timer = 0;
 
+  int round = 1;
+
 
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   srand(rank * time(NULL));
 
+  while(1) {
 
-  send_participation_info(rank, size, timer);
+    printf("Round %d\n", round);
 
-  send_leader_vote(rank, size, timer);
-  choose_leaders(rank, size, timer);
+    send_participation_info(rank, size, timer);
 
-  send_location_vote(size, rank, timer);
-  choose_location(size, rank, timer);
+    send_leader_vote(rank, size, timer);
+    choose_leaders(rank, size, timer);
 
+    send_location_vote(size, rank, timer);
+    choose_location(size, rank, timer);
+
+    printf("End of round %d\n\n\n", round);
+    round++;
+
+    usleep(5000000);
+  }
 
 
   MPI_Finalize();
