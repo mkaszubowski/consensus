@@ -16,23 +16,29 @@ int updated_timer(int current, int received) {
   else return current + 1;
 }
 
+void send_message(int value, int timer, int recipient, int tag) {
+  int message[2] = {value, timer};
+  MPI_Send(message, 2, MPI_INT, recipient, tag, MPI_COMM_WORLD);
+}
+
 void send_participation_info(int rank, int size, int &timer) {
   int participates = rand() % 2 == 0;
-  int message[2] = {participates, timer};
 
   for (int i = 0; i < size; i++) {
-    MPI_Send(message, 2, MPI_INT, i, PARTICIPATION_TAG, MPI_COMM_WORLD);
+    send_message(participates, timer, i, PARTICIPATION_TAG);
 
     timer++;
+
+    printf("Time = %d, Id = %d, sent participation info: %d\n",
+      timer, rank, participates);
   }
 }
 
 void send_leader_vote(int rank, int size, int &timer) {
   int leader_vote = rand() % size;
-  int message[2] = {leader_vote, timer};
 
   for (int recipient = 0; recipient < size; recipient++) {
-    MPI_Send(message, 2, MPI_INT, recipient, LEADER_TAG, MPI_COMM_WORLD);
+    send_message(leader_vote, timer, recipient, LEADER_TAG);
 
     timer++;
 
@@ -98,11 +104,9 @@ void choose_leaders(int rank, int size, int &timer) {
 
 void send_location_vote(int size, int rank, int &timer) {
   int location_vote = rand() % 4;
-  int message[2] = {location_vote, timer};
 
   for (int recipient = 0; recipient < size; recipient++) {
-    MPI_Send(message, 2, MPI_INT, recipient,
-      LOCATION_TAG, MPI_COMM_WORLD);
+    send_message(location_vote, timer, recipient, LOCATION_TAG);
 
     timer++;
 
