@@ -9,24 +9,27 @@
 
 #define PARTICIPATION_TAG 100
 #define LEADER_TAG 200
+#define LOCATION_TAG 300
 
-void send_participation_info(int rank, int size) {
+void send_participation_info(int rank, int size, int &timer) {
   int participates = rand() % 2 == 0;
 
   for (int i = 0; i < size; i++) {
     MPI_Send(&participates, 1, MPI_INT, i, PARTICIPATION_TAG, MPI_COMM_WORLD);
+    timer++;
   }
 }
 
-void send_leader_vote(int rank, int size) {
+void send_leader_vote(int rank, int size, int &timer) {
   int leader_vote = rand() % size;
 
   for (int recipient = 0; recipient < size; recipient++) {
     MPI_Send(&leader_vote, 1, MPI_INT, recipient, LEADER_TAG, MPI_COMM_WORLD);
+    timer++;
   }
 }
 
-int *receive_leaders_votes(int rank, int size) {
+int *receive_leaders_votes(int rank, int size, int &timer) {
   MPI_Status status;
 
   int *leaders_votes = new int[size];
@@ -36,17 +39,18 @@ int *receive_leaders_votes(int rank, int size) {
       &(leaders_votes[sender]), 1, MPI_INT,
       sender, LEADER_TAG, MPI_COMM_WORLD, &status
     );
+    timer++;
 
-    printf("Process: %d, received leader vote: %d\n",
-      rank, leaders_votes[sender]);
+    // printf("Process: %d, received leader vote: %d\n",
+    //   rank, leaders_votes[sender]);
   }
 
   return leaders_votes;
 }
 
 
-void choose_leaders(int rank, int size) {
-  int *leaders_votes = receive_leaders_votes(rank, size);
+void choose_leaders(int rank, int size, int &timer) {
+  int *leaders_votes = receive_leaders_votes(rank, size, timer);
 
   int leaders[3],
       max[2] = { 0 },
@@ -84,15 +88,39 @@ int main(int argc, char **argv)
 {
   int size,rank;
 
+  int timer = 0;
+
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   srand(rank * time(NULL));
 
-  send_participation_info(rank, size);
+  send_participation_info(rank, size, timer);
 
-  send_leader_vote(rank, size);
-  choose_leaders(rank, size);
+  send_leader_vote(rank, size, timer);
+  choose_leaders(rank, size, timer);
+
+
+  int location_vote = rand() % 4;
+
+  for (int recipient = 0; recipient < size; recipient++) {
+    MPI_Send(&location_vote, 1, MPI_INT, recipient,
+      LOCATION_TAG, MPI_COMM_WORLD);
+  }
+
+  int *location_votes = new int[size];
+  MPI_Status status;
+  for (int sender = 0; sender < size; sender++) {
+    MPI_Recv(
+      &(location_votes[sender]), 1, MPI_INT,
+      sender, LOCATION_TAG, MPI_COMM_WORLD, &status
+    );
+
+    printf("Process: %d, received location vote: %d\n",
+      rank, location_votes[sender]);
+  }
+
+
 
   MPI_Finalize();
 }
