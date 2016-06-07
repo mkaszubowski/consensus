@@ -172,6 +172,11 @@ int main(int argc, char **argv)
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   srand(rank * time(NULL));
 
+  if (size < 3) {
+    printf("Not enough processes.");
+    exit(0);
+  }
+
   while(1) {
 
     printf("Round %d\n", round);
